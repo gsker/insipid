@@ -12,6 +12,10 @@ that the line `dbtype` is set:
 ### For PostgreSQL:
     dbtype = Pg
 
+### For SQLite: 
+    dbname = /var/insipid/sqlite/insipid.sqlite
+    dbtype = SQLite
+
 Create a user and password for the database if you don't have one assigned
 to you by your adiministrator or ISP.  Doing this is beyond the scope of this
 readme file---refer to the MySQL or PostgreSQL server documentation for more

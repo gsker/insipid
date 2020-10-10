@@ -1,5 +1,7 @@
 # This is the database configuration for Insipid.  The "dbtype" parameter
 # can be either "mysql" for the MySQL database or "Pg" for PostgreSQL.
+# If the dbtype is SQLite, the dbname is the location of the sqlite database file
+#     Make sure it is readable by the web server. Ideally it should not be in the web tree.
 dbname = insipid_luke
 dbuser = luke
 dbpass = dbpass
