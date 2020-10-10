@@ -45,6 +45,7 @@ updated upon access.
  * [madphilosopher's insipid bookmarks](https://b.cyxd.ca/)
 
 ## lighttpd configuration
+```
 $HTTP["url"] =~ "^/insipid" {
         cgi.assign = ( ".cgi" => "" )
         url.redirect = ( "^/insipid/{0,1}$" => "/insipid/insipid.cgi" )
@@ -62,5 +63,6 @@ url.rewrite-once += (
     "^/insipid\/{0,1}$" => "/insipid/insipid.cgi"
   )
 }
+```
 
 
