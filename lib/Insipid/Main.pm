@@ -44,7 +44,7 @@ use CGI qw/:standard/;
 use CGI::Carp qw(fatalsToBrowser);
 use URI::Escape;
 use IO::File;
-#use XML::Parser;
+use XML::Parser;
 use XML::Writer;
 use Date::Format;
 use Date::Parse;
@@ -203,7 +203,6 @@ sub main {
 	    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 	    <link rel="alternate" type="application/rss+xml" title="RSS" href="$feed_url$tspec" />
 	    <link rel="stylesheet" href="$site_url/insipid.css" type="text/css" title="Standard" />
-        <link rel="shortcut icon" href="/favicon.ico" />
 	  </head>
 	  <body marginheight="0" marginwidth="0">
 DOC
@@ -246,7 +245,7 @@ DOC
 	    } else {
 	      print <<IFORM;
 	<p>This allows you to import either 
-	<a href="https://github.com/madphilosopher/insipid">Insipid</a> or
+	<a href="http://www.neuro-tech.net/insipid/">Insipid</a> or 
 	<a href="http://del.icio.us/">del.icio.us</a> backups.  For del.icio.us, you
 	must first use their API to export your bookmarks to an XML file.  To do this,
 	access the URL "http://username:password\@del.icio.us/api/posts/all?" 
@@ -336,7 +335,7 @@ IFORM
 		if(param('description')) { $description = param('description'); }
 		$access_level = 1;
 		$button = "Add";
-		$snapshot_params = "<input type=\"checkbox\" name=\"snapshot\" /><span class=\"formtext\">Snapshot&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>\n";
+		$snapshot_params = "<span class=\"formtext\">Snapshot:</span><input type=\"checkbox\" name=\"snapshot\" />\n";
 	      }
 	  
 	      my $style = "style=\"width:500px\"";
@@ -365,10 +364,10 @@ IFORM
 	      <span class="formtext">Tags:</span><br />
 	      <input name="tags" $style value="$tags" /><br />
 	      $snapshot_params
+	      <span class="formtext">Public:</span>
 	      <input type="checkbox" name="access_level" $access_box />
-	      <span class="formtext">Public&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+	      <span class="formtext">Return:</span>
 	      <input type="checkbox" name="redirect" $redir_box />
-	      <span class="formtext">Return&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
 	      <input type="hidden" name="save" value="true" />
 	      <input type="hidden" name="op" value="add_bookmark" />
 	      $extra_params
@@ -512,7 +511,7 @@ sub show_footer {
 	if(defined(url_param('page'))) {
 		$older = url_param('page') + 1;
 	}
-	
+
 	if($last_page eq 0) { 
 	  if($query ne "") {
 	    print " | <a href=\"?page=$older&q=";
@@ -743,19 +742,21 @@ sub show_toolbar {
 	print '<center>';
 	print '<table border="0" width="100%" cellspacing="0" cellpadding="3"><tr>';
 	print '<td valign="top" bgcolor="#CCCCCC">';
-
+	my $bookmarks_url;
 	# Title
 	print '<div class="title"><a href="';
 	if(get_option('use_rewrite') eq 'yes') {
   		print $site_url . '/bookmarks';
+		$bookmarks_url='bookmarks';
 	} else {
   		print 'insipid.cgi';
+		$bookmarks_url='/insipid.cgi';
 	}
 	print '">' . $site_title . '</a></div>';
   
 	if((get_option("public_searches") eq "yes") || (logged_in() eq 1)) {
 		print "<div class=\"search\">";
-		print "<form action=\"$site_url/bookmarks\" method=\"post\">";
+		print "<form action=\"$site_url/$bookmarks_url\" method=\"post\">";
 		print "<input type=\"text\" name=\"q\"> <input type=\"submit\" value=\"search\">";
 		print "</form>";
 		print "</div>";
@@ -790,8 +791,8 @@ sub show_toolbar {
 		print " | <a class=\"tools\" href=\"$site_url/insipid.cgi?op=login\">login</a>";
 	}
 
-	print " | <a class=\"tools\" href=\"$site_url/help.html\">help</a> ";
-	print " | <a class=\"tools\" href=\"https://github.com/madphilosopher/insipid\">source</a>";
+	print " | <a class=\"tools\" href=\"javascript:void window.open('$site_url/help.html','width=300,height=500');\">help</a> ";
+	print " | <a class=\"tools\" href=\"http://www.neuro-tech.net/insipid/\">source</a>";
 
 	print "</div></tr></table></center>";
 }
@@ -838,9 +839,9 @@ sub show_bookmarks {
 	# dataset (for paging purposes).
 
 	# MySQL and postgres have slightly different syntax here...
-	if ($dbtype eq 'mysql') {
+	if ($dbtype eq 'mysql' ) {
 	    $sql = "select $tbl_bookmarks.id from $tbl_bookmarks";
-	} elsif ($dbtype eq 'Pg') {
+	} elsif ($dbtype eq 'Pg' || $dbtype eq 'SQLite') {
 	    $sql = "select $tbl_bookmarks.id, $tbl_bookmarks.date 
 	    	from $tbl_bookmarks";
 	}
@@ -882,7 +883,7 @@ sub show_bookmarks {
   		if((get_option("public_searches") eq "yes") || (logged_in() eq 1)) {
 			my $sparm = $query;
 			if(length($sparm) > 2) {
-				$sql = "$sql where ($tbl_bookmarks.title like ?)";
+				$sql = "$sql where ($tbl_bookmarks.title || $tbl_bookmarks.description like ?)";
 				$sparm =~ s/\%//;
 				$sparm = "\%$sparm\%";
 				push(@parms, $sparm);
@@ -892,21 +893,23 @@ sub show_bookmarks {
 
 	# order
 	$sql = "$sql order by $tbl_bookmarks.date desc";
-
 	# paging functionality
 	$sql = "$sql limit 100";
-	
 	if(defined(url_param('page'))) {
 	    my $offset = ((url_param('page') - 1) * 100);
 	    $sql = "$sql offset $offset";
 	}
 
+	my $rowcount=0;
+	$sth = $dbh->prepare($sql);
+	$sth->execute(@parms);
+	while ($sth->fetchrow) { $rowcount++;}
 	$sth = $dbh->prepare($sql);
 	$sth->execute(@parms);
 
 	$subquery = "";
-	if($sth->rows > 0) {
-		if($sth->rows ne 100) { $last_page = 1; }
+	if($rowcount > 0) {
+		if($rowcount ne 100) { $last_page = 1; }
 	
 		$subquery = " $tbl_bookmarks.id in (";
 		
@@ -916,6 +919,7 @@ sub show_bookmarks {
 		chop($subquery); # Strip off the last delimiter
 		
 		$subquery = $subquery . ")";
+
 	} else {
 		print "<p>No bookmarks found.</p>";
 		return;
@@ -1074,17 +1078,15 @@ sub show_bookmark {
 	
 	my $timestr = "";
 	if(logged_in() eq 1) {
-		#$timestr = time2str("%Y-%m-%d %T UTC", $timestamp, "UTC");
-		$timestr = time2str("%Y %b %e", $timestamp, "UTC");
+		$timestr = time2str("%Y-%m-%d %T CST", $timestamp, "CST");
 	} else {
-		$timestr = time2str("%Y %b %e", $timestamp, "UTC");
+		$timestr = time2str("%Y-%m-%d", $timestamp, "CST");
 	}
 
-	#print "posted on $timestr ";
-	print "$timestr";
+	print "posted on $timestr ";
 	    
 	if(defined($tags)) {
-	  print ": ";
+	  print "to ";
 	  my $cur;
 	    
 	  foreach $cur (split(/\ /, $tags)) {
@@ -1122,9 +1124,9 @@ sub get_bookmark_id {
 	my $sth = $dbh->prepare($sql);
 
 	$sth->execute(md5_hex($url));
-
+	
+	my @r = $sth->fetchrow_array;
 	if($sth->rows ne 0) {
-		my @r = $sth->fetchrow_array;
 		return $r[0];
 	}
 	

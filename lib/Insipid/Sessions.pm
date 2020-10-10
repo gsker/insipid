@@ -54,11 +54,12 @@ if(defined($sid)) {
 			where (session_id = ?)";
 	my $sth = $dbh->prepare($sql);
 	$sth->execute($sid);
+	my @r = $sth->fetchrow_array;
 
-	if($sth->rows ne 0) {
+	if($r[0]  gt 0) {
 		$logged_in = 1;
 	} else {
-		print "Set-Cookie: $ctag=; path=$pagepath; expires=Fri, 03-Sep-2020 20:20:13 GMT\n";
+		print "Set-Cookie: $ctag=; path=$pagepath; expires=Fri, 03-Sep-2030 20:20:13 GMT\n";
 	}
 }
 
@@ -84,7 +85,7 @@ sub login {
 
 	$logged_in = 1;
 	
-	return "Set-Cookie: $ctag=$sid; path=$pagepath; expires=Fri, 03-Sep-2020 20:20:13 GMT\n";
+	return "Set-Cookie: $ctag=$sid; path=$pagepath; expires=Fri, 03-Sep-2030 20:20:13 GMT\n";
 }
 
 # Logs out and returns the cookie header
@@ -98,7 +99,7 @@ sub logout {
 		$logged_in = 0;
 		
 		return "Set-Cookie: $ctag=; path=$pagepath; expires=Fri, " . 
-			"03-Sep-2020 20:20:13 GMT\n";
+			"03-Sep-2030 20:20:13 GMT\n";
 	}
 }
 

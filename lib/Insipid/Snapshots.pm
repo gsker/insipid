@@ -58,6 +58,7 @@ fetch_url
 );
 
 my $ua = LWP::UserAgent->new(timeout=>30);
+$ua->agent('Mozilla/5.0');
 if(get_option('proxy_host') ne '') {
 	my $proxy_host = get_option('proxy_host');
 	my $proxy_port = get_option('proxy_port');
@@ -147,10 +148,11 @@ sub fetch_url {
 			$sth->bind_param(5, $content);
 		}
 		$sth->bind_param(6, time());
+        print "md5 is $md5\n";
 		$sth->execute;
 
 		if($sth->err) {
-		#	print $sth->errstr;
+			print $sth->errstr,$md5;
 		#	print "<br />";
 			return 1;			 
 		} else {
@@ -359,7 +361,7 @@ sub show_snapshots {
 		print $r[1];
 		if($r[5] eq 0) { print '</i>'; }
 		print '</a></td>';
-		my $timestr = time2str('%Y-%m-%d', $r[2], 'EST');
+		my $timestr = time2str('%Y-%m-%d', $r[2], 'CST');
 		my $count = $r[4] + 1; $tcount += $count;
 		$tsize += $r[3];
 		print "<td align=\"center\">$timestr</td>";

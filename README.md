@@ -43,3 +43,24 @@ updated upon access.
 
 ## In-Production Example
  * [madphilosopher's insipid bookmarks](https://b.cyxd.ca/)
+
+## lighttpd configuration
+$HTTP["url"] =~ "^/insipid" {
+        cgi.assign = ( ".cgi" => "" )
+        url.redirect = ( "^/insipid/{0,1}$" => "/insipid/insipid.cgi" )
+
+url.rewrite-once += (
+        "^/insipid/insipid.cgi(.*)" => "/insipid/insipid.cgi$1",
+    "^/insipid(/bookmarks/{0,1}){0,1}$" => "/insipid/insipid.cgi",
+    "^/insipid/feeds/bookmarks" => "/insipid/insipid.cgi?op=rss",
+    "^/insipid/bookmarks/(.*)" => "/insipid/insipid.cgi?tag=$1",
+    "^/insipid/bookmarks(.*)" => "/insipid/insipid.cgi$1",
+    "^/insipid/feeds/bookmarks/(.*)" => "/insipid/insipid.cgi?op=rss&tag=$1",
+    "^/insipid/snapshot/(.*)" => "/insipid/insipid.cgi?op=viewsnapshot&md5=$1",
+    "^/insipid/feeds/json/tags/(.*)" => "/insipid/insipid.cgi?op=json_tags&tag=$1",
+    "^/insipid/feeds/json/posts/(.*)" => "/insipid/insipid.cgi?op=json_posts&tag=$1",
+    "^/insipid\/{0,1}$" => "/insipid/insipid.cgi"
+  )
+}
+
+

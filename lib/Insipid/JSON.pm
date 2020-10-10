@@ -80,16 +80,20 @@ sub send_json_tags {
 			inner join $tbl_bookmark_tags as bt2 on
 				($tbl_bookmarks.id = bt2.bookmark_id)
 			inner join $tbl_tags as t2 on
-				(t2.id = bt2.tag_id and t2.name = ?)
-			where ($tbl_tags.name != ?)
+				(t2.id = bt2.tag_id and t2.name like ?)
+			where ($tbl_tags.name not like ?)
 			group by $tbl_tags.name $limit";
 		$sth = $dbh->prepare($sql);
 		$sth->execute(url_param('tag'), url_param('tag'));
 	print $json_prefix ;
-	if($sth->rows ne 0) {
+	my $rowcount=0;
+	while ($sth->fetchrow_array()) { $rowcount++;}
+	$sth = $dbh->prepare($sql);
+	$sth->execute(url_param('tag'), url_param('tag'));
+	if($rowcount ne 0) {
 		my $icount = 1 ;
 		while(my @r = $sth->fetchrow_array()) {
-			json_show_tag($icount, $sth->rows, $r[0], $r[1]);
+			json_show_tag($icount, $rowcount, $r[0], $r[1]);
 			$icount++ ;
 		}
 	}
@@ -107,6 +111,8 @@ sub send_json_tags {
 	my $order_clause;
 	if($dbtype eq "Pg") {
 		$order_clause = "order by upper($tbl_tags.name)";
+	} elsif ($dbtype eq "SQLite") {
+		$order_clause = "order by $tbl_tags.name COLLATE NOCASE";
 	} else {
 		$order_clause = "order by $tbl_tags.name";
 	}
@@ -124,11 +130,15 @@ sub send_json_tags {
 
 	$sth = $dbh->prepare($sql);
 	$sth->execute;
+	my $rowcount=0;
+	while ($sth->fetchrow_array()) { $rowcount++;}
+	$sth = $dbh->prepare($sql);
+	$sth->execute;
 	print $json_prefix;
-	if($sth->rows ne 0) {
+	if($rowcount ne 0) {
 		my $icount = 1;
 		while(my @r = $sth->fetchrow_array()) {
-			json_show_tag($icount, $sth->rows, $r[0], $r[1]);	
+			json_show_tag($icount, $rowcount, $r[0], $r[1]);	
 			$icount++;
 		}
 	}
@@ -178,9 +188,9 @@ sub send_json_posts {
 	# dataset (for paging purposes).
 
 	# MySQL and postgres have slightly different syntax here...
-	if ($dbtype eq 'mysql') {
+	if ($dbtype eq 'mysql' ) {
 	    $sql = "select $tbl_bookmarks.id from $tbl_bookmarks";
-	} elsif ($dbtype eq 'Pg') {
+	} elsif ($dbtype eq 'Pg' || $dbtype eq 'SQLite') {
 	    $sql = "select $tbl_bookmarks.id, $tbl_bookmarks.date
 	    	from $tbl_bookmarks";
 	}
@@ -201,7 +211,7 @@ sub send_json_posts {
 					  	bt$icount.bookmark_id)
 					inner join $tbl_tags as t$icount on
 					   (t$icount.id = bt$icount.tag_id
-					   	and t$icount.name = ?) ";
+					   	and t$icount.name like ?) ";
 				$icount++;
 			}
 		} else {
@@ -211,7 +221,7 @@ sub send_json_posts {
 				  	$tbl_bookmark_tags.bookmark_id)
 				inner join $tbl_tags on
 			  	  ($tbl_tags.id = $tbl_bookmark_tags.tag_id)
-				  where ($tbl_tags.name = ?)";
+				  where ($tbl_tags.name like ?)";
 			push(@parms, url_param('tag'));
 		}
 
@@ -224,7 +234,7 @@ sub send_json_posts {
   		if((get_option("public_searches") eq "yes") || (logged_in() eq 1)) {
 			my $sparm = $query;
 			if(length($sparm) > 2) {
-				$sql = "$sql where ($tbl_bookmarks.title like ?)";
+				$sql = "$sql where ($tbl_bookmarks.title || $tbl_bookmarks.description like ?)";
 				$sparm =~ s/\%//;
 				$sparm = "\%$sparm\%";
 				push(@parms, $sparm);
@@ -244,11 +254,15 @@ sub send_json_posts {
 	    $sql = "$sql offset $offset";
 	}
 
+	$sth = $dbh->prepare($sql) || die ;
+	$sth->execute(@parms);
+	my $rowcount=0;
+	while ($sth->fetchrow_array()) { $rowcount++;}
 	$sth = $dbh->prepare($sql);
 	$sth->execute(@parms);
 
 	$subquery = "";
-	if($sth->rows > 0) {
+	if($rowcount > 0) {
 		if($sth->rows ne $limit) { $last_page = 1; }
 
 		$subquery = " $tbl_bookmarks.id in (";

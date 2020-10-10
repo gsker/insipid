@@ -51,7 +51,7 @@ if(defined(getconfig('dbtype'))) {
 }
 
 $dsn = "DBI:$dbtype:dbname=$dbname;host=localhost";
-$dbh = DBI->connect($dsn, $dbuser, $dbpass, { 'RaiseError' => 0}) or die $DBI::errstr;
+$dbh = DBI->connect($dsn, $dbuser, $dbpass, { 'RaiseError' => 1}) or die $DBI::errstr;
 
 my %options;
 

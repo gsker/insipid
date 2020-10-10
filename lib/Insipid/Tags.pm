@@ -79,7 +79,7 @@ sub show_tags {
 		$sth = $dbh->prepare($sql);
 		$sth->execute(url_param('tag'), url_param('tag'));
 
-		if($sth->rows ne 0) {
+		#if($sth->rows ne 0) {
 			print "<div id=\"taglist\" style=\"\">";
 			print "<table cellpadding =\"0\" cellspacing=\"0\" ";
 			print 'class="tagsummarytable"><tbody>';
@@ -98,7 +98,7 @@ sub show_tags {
 			print "</tbody></table></div></div>";
 
 			return;
-		}
+			#}
 	}
 
 	# Access_spec contains a where clause to count only public bookmarks 
@@ -111,6 +111,8 @@ sub show_tags {
 	my $order_clause;
 	if($dbtype eq "Pg") {
 		$order_clause = "order by upper($tbl_tags.name)";
+	} elsif ($dbtype eq "SQLite") {
+		$order_clause = "order by $tbl_tags.name COLLATE NOCASE";
 	} else {
 		$order_clause = "order by $tbl_tags.name";
 	}
@@ -175,7 +177,7 @@ sub get_tags_list {
 				($tbl_tags.id = $tbl_bookmark_tags.tag_id) 
 			inner join $tbl_bookmarks on
 				($tbl_bookmark_tags.bookmark_id = $tbl_bookmarks.id)
-			where ($tbl_bookmarks.url = ?)";
+			where ($tbl_bookmarks.url like ?)";
   
 	my $sth = $dbh->prepare($sql);
 	$sth->execute($url);

@@ -73,27 +73,24 @@ sub add_bookmark {
 	my $md5 = md5_hex($url);
 
 	# Check for duplicate
-	$sql = "select title from $tbl_bookmarks where (md5 = ?)";
+	$sql = "select count(*) from $tbl_bookmarks where (md5 like ?)";
 	$sth = $dbh->prepare($sql);
 	$sth->execute($md5);
-	
-	if($sth->rows ne 0) {
+	my ($count) = $sth->fetchrow_array;
+	if($count ne 0 ) {
 		$duplicates++;
 		return;
 	}
 
 	$sql = "INSERT INTO $tbl_bookmarks 
 		(url, md5, title, description, access_level, date) 
-		VALUES (?, ?, ?, ?, ?, ?)";
+		VALUES (?, ?, ?, ?, ? , ? )";
 
 	if($epoch eq 0) { $epoch = time; }
 	$sth = $dbh->prepare($sql);
 
-	$sth->execute($url, $md5, $title, $description, $access_level, $epoch)
-		or die $DBI::errstr;
-	
+	$sth->execute($url, $md5, $title, $description, $access_level, $epoch);
 	$icount++;
-
 	set_tags(get_bookmark_id_by_url($url), $tags);
 }
 
