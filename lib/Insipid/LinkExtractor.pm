@@ -37,92 +37,92 @@ use vars qw(@ISA);
 my $url = '';
 
 sub new {
-	my $pack = shift;
-	$url = shift;
-	my $self = $pack->SUPER::new;
-	$self;
+    my $pack = shift;
+    $url = shift;
+    my $self = $pack->SUPER::new;
+    $self;
 }
 
 sub declaration {
-	my $self = shift;
-	my ($decl) = @_;
+    my $self = shift;
+    my ($decl) = @_;
 
-	1;
+    1;
 }
 
 sub start {
-	my $self = shift;
-	my ($tag, $attr, $attrseq, $origtext) = @_;
+    my $self = shift;
+    my ( $tag, $attr, $attrseq, $origtext ) = @_;
 
-	#print "Found tag $tag<br />";
-	if($tag eq 'a') {
-		my $href = $attr->{'href'};
-		if(defined($href)) {
-			if($href =~ /(\.gif|\.jpg|\.png)/i) {
-				grab_image($url, $href);
-			}
-		}
-	}
+    #print "Found tag $tag<br />";
+    if ( $tag eq 'a' ) {
+        my $href = $attr->{'href'};
+        if ( defined($href) ) {
+            if ( $href =~ /(\.gif|\.jpg|\.png)/i ) {
+                grab_image( $url, $href );
+            }
+        }
+    }
 
-	1;
+    1;
 }
 
 sub grab_image {
-	my ($base_url, $t) = (@_);
-	my ($sql, $sth);
-	
-	my $u1 = URI::WithBase->new($t, $base_url);
-	my $target_url = $u1->abs;
-	
-	print "Fetching $target_url... ";
+    my ( $base_url, $t ) = (@_);
+    my ( $sql, $sth );
 
-	my $target_md5 = md5_hex($target_url);
+    my $u1         = URI::WithBase->new( $t, $base_url );
+    my $target_url = $u1->abs;
 
-	# Check if this already exists.
-	$sql = "select count(*) from $tbl_pagecache where (md5 = ?)";
-	$sth = $dbh->prepare($sql);
-	$sth->execute($target_md5);
-	my @r = $sth->fetchrow_array();
+    print "Fetching $target_url... ";
 
-	if($r[0] ne 0) {
-		print " Already exists. <br />";
-		return;
-	}
+    my $target_md5 = md5_hex($target_url);
 
-	my $rv = Insipid::Snapshots::fetch_url($target_url, $base_url);
+    # Check if this already exists.
+    $sql = "select count(*) from $tbl_pagecache where (md5 = ?)";
+    $sth = $dbh->prepare($sql);
+    $sth->execute($target_md5);
+    my @r = $sth->fetchrow_array();
 
-	if($rv eq 0) {
-		$sql = "insert into $tbl_pagecache_references(
+    if ( $r[0] ne 0 ) {
+        print " Already exists. <br />";
+        return;
+    }
+
+    my $rv = Insipid::Snapshots::fetch_url( $target_url, $base_url );
+
+    if ( $rv eq 0 ) {
+        $sql = "insert into $tbl_pagecache_references(
 			md5_parent, md5_child) values(?, ?)";
-		$sth = $dbh->prepare($sql);
-		$sth->execute(md5_hex($base_url), $target_md5);
-	
-		print "OK.<br />";
-	}
-	
-	1;
+        $sth = $dbh->prepare($sql);
+        $sth->execute( md5_hex($base_url), $target_md5 );
+
+        print "OK.<br />";
+    }
+
+    1;
 }
 
 sub end {
-	my $self = shift;
-	my ($tag) = @_;
+    my $self = shift;
+    my ($tag) = @_;
 
-	1;
+    1;
 }
 
 sub text {
-	my $self = shift;
-	my ($text) = @_;
+    my $self = shift;
+    my ($text) = @_;
 
-	1;
+    1;
 }
 
 sub comment {
-	my $self = shift;
-	my ($comment) = @_;
+    my $self = shift;
+    my ($comment) = @_;
 
-	1;
+    1;
 }
-	
+
 1;
 

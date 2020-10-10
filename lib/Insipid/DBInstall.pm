@@ -26,55 +26,59 @@ use warnings;
 use Insipid::Config;
 use Insipid::Schemas;
 
-use DBI qw/:sql_types/;;
+use DBI qw/:sql_types/;
 use vars qw($version);
 
 use Exporter ();
-our (@ISA, @EXPORT);
-	
-@ISA = qw(Exporter);
+our ( @ISA, @EXPORT );
+
+@ISA    = qw(Exporter);
 @EXPORT = qw(install);
 
 sub install {
-	my ($sth, $dbname, $dbuser, $dbpass, $dbtype, $dsn, $dbh, @creates);
+    my ( $sth, $dbname, $dbuser, $dbpass, $dbtype, $dsn, $dbh, @creates );
 
-	$dbname = getconfig('dbname');
-	$dbuser = getconfig('dbuser');
-	$dbpass = getconfig('dbpass');
+    $dbname = getconfig('dbname');
+    $dbuser = getconfig('dbuser');
+    $dbpass = getconfig('dbpass');
 
-	if(defined(getconfig('dbtype'))) {
-		$dbtype = getconfig('dbtype');
-	} else {
-		$dbtype = 'mysql';
-	}
+    if ( defined( getconfig('dbtype') ) ) {
+        $dbtype = getconfig('dbtype');
+    }
+    else {
+        $dbtype = 'mysql';
+    }
 
-	$dsn = "DBI:$dbtype:dbname=$dbname;host=localhost";
-	$dbh = DBI->connect($dsn, $dbuser, $dbpass, { 'RaiseError' => 0}) or die $DBI::errstr;
+    $dsn = "DBI:$dbtype:dbname=$dbname;host=localhost";
+    $dbh = DBI->connect( $dsn, $dbuser, $dbpass, { 'RaiseError' => 0 } )
+      or die $DBI::errstr;
 
-	print "Content-Type: text/html\r\n\r\n";
-	print "<html><head><title>Insipid Installation</title></head><body>";
+    print "Content-Type: text/html\r\n\r\n";
+    print "<html><head><title>Insipid Installation</title></head><body>";
 
-	print "<p>Creating tables...";
+    print "<p>Creating tables...";
 
-	if($dbtype eq 'mysql') {
-		@creates = split(/\;/, $createMySQL);
-	} else {
-		@creates = split(/\;/, $createPostgres);
-	}
+    if ( $dbtype eq 'mysql' ) {
+        @creates = split( /\;/, $createMySQL );
+    }
+    else {
+        @creates = split( /\;/, $createPostgres );
+    }
 
-	foreach(@creates) {
-		my $sql = $_;
-		if(length($sql) > 2) {
-			$sth = $dbh->prepare($sql);
-			$sth->execute() or print "<br />Error executing \"$sql\" - $DBI::errstr<br />";
-		}
-	}
-	print " done!</p>";
+    foreach (@creates) {
+        my $sql = $_;
+        if ( length($sql) > 2 ) {
+            $sth = $dbh->prepare($sql);
+            $sth->execute()
+              or print "<br />Error executing \"$sql\" - $DBI::errstr<br />";
+        }
+    }
+    print " done!</p>";
 
-	print "<p>Insipid's database has been installed.  You can reload this " .
-		"page to start using Insipid.</p>";
-	
-	print "</body></html>";
+    print "<p>Insipid's database has been installed.  You can reload this "
+      . "page to start using Insipid.</p>";
+
+    print "</body></html>";
 
 }
 

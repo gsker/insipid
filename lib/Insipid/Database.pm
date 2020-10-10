@@ -26,124 +26,133 @@ use warnings;
 use Insipid::Config;
 use Insipid::Schemas;
 
-use DBI qw/:sql_types/;;
+use DBI qw/:sql_types/;
 use vars qw($version);
 
 use Exporter ();
-our (@ISA, @EXPORT);
-	
-@ISA = qw(Exporter);
-@EXPORT = qw($dbname $dbuser $dbpass $dsn $dbh $dbtype get_option 
-	install $version $tag_url $feed_url $full_url $snapshot_url
-	export_options $dbprefix);
-	
-our ($dsn, $dbh, $dbname, $dbuser, $dbpass, $snapshot_url,
-	$dbtype, $tag_url, $feed_url, $full_url, $dbprefix);
+our ( @ISA, @EXPORT );
+
+@ISA    = qw(Exporter);
+@EXPORT = qw($dbname $dbuser $dbpass $dsn $dbh $dbtype get_option
+  install $version $tag_url $feed_url $full_url $snapshot_url
+  export_options $dbprefix);
+
+our (
+    $dsn,      $dbh,          $dbname, $dbuser,
+    $dbpass,   $snapshot_url, $dbtype, $tag_url,
+    $feed_url, $full_url,     $dbprefix
+);
 
 $dbname = getconfig('dbname');
 $dbuser = getconfig('dbuser');
 $dbpass = getconfig('dbpass');
 
-if(defined(getconfig('dbtype'))) {
-	$dbtype = getconfig('dbtype');
-} else {
-	$dbtype = 'mysql';
+if ( defined( getconfig('dbtype') ) ) {
+    $dbtype = getconfig('dbtype');
+}
+else {
+    $dbtype = 'mysql';
 }
 
 $dsn = "DBI:$dbtype:dbname=$dbname;host=localhost";
-$dbh = DBI->connect($dsn, $dbuser, $dbpass, { 'RaiseError' => 1}) or die $DBI::errstr;
+$dbh = DBI->connect( $dsn, $dbuser, $dbpass, { 'RaiseError' => 1 } )
+  or die $DBI::errstr;
 
 my %options;
 
 sub export_options {
-	my ($writer) = (@_);
-	my ($sth);
-	
-	$writer->startTag('options');
-	$sth = $dbh->prepare("select name, value from $tbl_options");
-	$sth->execute();
-	while(my $row = $sth->fetchrow_hashref) {
-		if($row->{name} ne 'version') {
-			$writer->emptyTag('option', 
-				'name' => $row->{name},
-				'value' => $row->{value});
-		}
-	}
-	
-	$writer->endTag('options');
+    my ($writer) = (@_);
+    my ($sth);
+
+    $writer->startTag('options');
+    $sth = $dbh->prepare("select name, value from $tbl_options");
+    $sth->execute();
+    while ( my $row = $sth->fetchrow_hashref ) {
+        if ( $row->{name} ne 'version' ) {
+            $writer->emptyTag(
+                'option',
+                'name'  => $row->{name},
+                'value' => $row->{value}
+            );
+        }
+    }
+
+    $writer->endTag('options');
 }
 
 sub dbupgrade {
-	my $sql = "update $tbl_options set value = ? where (name = ?)";
-	my $sth = $dbh->prepare($sql);
-	$sth->execute($version, 'version');
+    my $sql = "update $tbl_options set value = ? where (name = ?)";
+    my $sth = $dbh->prepare($sql);
+    $sth->execute( $version, 'version' );
 
-	$sql = "insert into $tbl_options(name, value, description) 
+    $sql = "insert into $tbl_options(name, value, description) 
 			values(?, ?, ?)";
-	$sth = $dbh->prepare($sql);
-	$sth->execute('version', $version, 'Internal Insipid version');
-	$sth->execute('use_rewrite', 'yes', 'Use mod_rewrite - disable this if you do not want to use mod_rewrite.');
+    $sth = $dbh->prepare($sql);
+    $sth->execute( 'version', $version, 'Internal Insipid version' );
+    $sth->execute( 'use_rewrite', 'yes',
+        'Use mod_rewrite - disable this if you do not want to use mod_rewrite.'
+    );
 
-	# Delete the old sessions table
-	$sql = 'drop table sessions';
-	$sth = $dbh->prepare($sql);
-	$sth->execute();
+    # Delete the old sessions table
+    $sql = 'drop table sessions';
+    $sth = $dbh->prepare($sql);
+    $sth->execute();
 
-	# Create the new session table if it's not there.
-	$sql = "create table $tbl_authentication (
+    # Create the new session table if it's not there.
+    $sql = "create table $tbl_authentication (
 			session_id varchar(32),
 			create_time int,
 			primary key(session_id))";
-	$sth = $dbh->prepare($sql);
-	$sth->execute();
-	if($dbh->errstr) {
-		print STDERR $dbh->errstr;
-	}
-	
-	return;
+    $sth = $dbh->prepare($sql);
+    $sth->execute();
+    if ( $dbh->errstr ) {
+        print STDERR $dbh->errstr;
+    }
+
+    return;
 }
 
 sub get_option {
-	my ($name) = (@_);
+    my ($name) = (@_);
 
-	if(keys (%options) == 0) {
-		reload_options();
-	}
+    if ( keys(%options) == 0 ) {
+        reload_options();
+    }
 
-	# Determine if we need to upgrade the database
-	if($version ne $options{'version'}) {
-		print STDERR "Upgrading schema from $options{'version'} to $version.\n";
-		dbupgrade();
-		reload_options();
-	}
+    # Determine if we need to upgrade the database
+    if ( $version ne $options{'version'} ) {
+        print STDERR "Upgrading schema from $options{'version'} to $version.\n";
+        dbupgrade();
+        reload_options();
+    }
 
-	return $options{$name};
+    return $options{$name};
 }
 
 sub reload_options {
-	my $sql = "select name, value from $tbl_options";
-	my $sth = $dbh->prepare($sql);
-	$sth->execute() or die $DBI::errstr;
+    my $sql = "select name, value from $tbl_options";
+    my $sth = $dbh->prepare($sql);
+    $sth->execute() or die $DBI::errstr;
 
-	while(my $hr = $sth->fetchrow_hashref) {
-		$options{$hr->{'name'}} = $hr->{'value'};
-	}
+    while ( my $hr = $sth->fetchrow_hashref ) {
+        $options{ $hr->{'name'} } = $hr->{'value'};
+    }
 }
 
 # This configures the URLs in the application to support mod_rewrite or
 # a webserver sans mod_rewrite.
-if(get_option('use_rewrite') eq 'yes') {
-	$tag_url  	= $site_url . '/bookmarks/';
-	$feed_url 	= $site_url . '/feeds/bookmarks';
-	$full_url 	= $site_url . '/bookmarks';
-	$snapshot_url	= $site_url . '/snapshot/';
-} else {
-	$tag_url  	= 'insipid.cgi?tag=';
-	$feed_url 	= $site_url . '/insipid.cgi?op=rss&tag=';
-	$full_url 	= $site_url . '/insipid.cgi';
-	$snapshot_url	= 'insipid.cgi?op=viewsnapshot&md5=';
+if ( get_option('use_rewrite') eq 'yes' ) {
+    $tag_url      = $site_url . '/bookmarks/';
+    $feed_url     = $site_url . '/feeds/bookmarks';
+    $full_url     = $site_url . '/bookmarks';
+    $snapshot_url = $site_url . '/snapshot/';
 }
-
+else {
+    $tag_url      = 'insipid.cgi?tag=';
+    $feed_url     = $site_url . '/insipid.cgi?op=rss&tag=';
+    $full_url     = $site_url . '/insipid.cgi';
+    $snapshot_url = 'insipid.cgi?op=viewsnapshot&md5=';
+}
 
 1;
 __END__

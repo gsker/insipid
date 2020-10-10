@@ -33,9 +33,9 @@ require Exporter;
 @ISA = qw(Exporter);
 
 @EXPORT = qw(
-ims_time
-sanitize_html
-check_access
+  ims_time
+  sanitize_html
+  check_access
 );
 
 @EXPORT_OK = qw();
@@ -45,34 +45,34 @@ my @MoY = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
 
 # TODO: If content is already sent, add the error to @errors instead of dying
 sub check_access {
-	if(logged_in() ne 1) {
-		print "Content-Type: text/plain\r\n\r\n";
-		print "You have to be logged in to perform that operation.";
-		exit;
-	}
+    if ( logged_in() ne 1 ) {
+        print "Content-Type: text/plain\r\n\r\n";
+        print "You have to be logged in to perform that operation.";
+        exit;
+    }
 }
 
 sub sanitize_html {
-	my ($orig) = (@_);
+    my ($orig) = (@_);
 
-	$orig =~ s/</&lt;/gi;
-	$orig =~ s/>/&gt;/gi;
+    $orig =~ s/</&lt;/gi;
+    $orig =~ s/>/&gt;/gi;
 
-	$orig =~ s/&amp;/&/gi;
-	$orig =~ s/&/&amp;/gi;
+    $orig =~ s/&amp;/&/gi;
+    $orig =~ s/&/&amp;/gi;
 
-	return $orig;
+    return $orig;
 }
-
 
 # From http::date
 sub ims_time {
     my ($time) = (@_);
-    my ($sec, $min, $hour, $mday, $mon, $year, $wday) = gmtime($time);
-    return sprintf("%s, %02d %s %04d %02d:%02d:%02d GMT",
-            $DoW[$wday],
-            $mday, $MoY[$mon], $year+1900,
-            $hour, $min, $sec);
+    my ( $sec, $min, $hour, $mday, $mon, $year, $wday ) = gmtime($time);
+    return sprintf(
+        "%s, %02d %s %04d %02d:%02d:%02d GMT",
+        $DoW[$wday], $mday, $MoY[$mon], $year + 1900,
+        $hour, $min, $sec
+    );
 }
 
 1;

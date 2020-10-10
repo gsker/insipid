@@ -25,10 +25,10 @@ use warnings;
 use Insipid::Config;
 
 use vars qw(
-@ISA
-@EXPORT
-$createMySQL
-$createPostgres
+  @ISA
+  @EXPORT
+  $createMySQL
+  $createPostgres
 );
 
 use Exporter;
@@ -36,9 +36,9 @@ use Exporter;
 @ISA = qw(Exporter);
 
 @EXPORT = qw(
-$version
-$createMySQL
-$createPostgres
+  $version
+  $createMySQL
+  $createPostgres
 );
 
 # Insipid will check the database version number on each initialization of
@@ -145,7 +145,6 @@ INSERT INTO $tbl_options VALUES(
 );
 
 CPOSTGRES
-
 
 our $createMySQL = <<CMYSQL;
 CREATE TABLE IF NOT EXISTS $tbl_authentication (

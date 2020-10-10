@@ -34,56 +34,57 @@ use Insipid::Util;
 use vars qw(@ISA @EXPORT $dbh);
 require Exporter;
 
-@ISA = qw(Exporter);
+@ISA    = qw(Exporter);
 @EXPORT = qw(send_rss);
 
 sub send_rss {
-	my @parms;
-	my $ew = "";
-	my $joins = "";
-	my $title = get_option("feed_name");
-	
-	if(url_param('tag')) {
-                if(url_param('tag') =~ / /) {
-                        my @tags = split(/ /, url_param('tag'));
-                        my $rcount = 1;
+    my @parms;
+    my $ew    = "";
+    my $joins = "";
+    my $title = get_option("feed_name");
 
-                        foreach(@tags) {
-                                push(@parms, $_);
-                                $joins = "$joins inner join $tbl_bookmark_tags 
+    if ( url_param('tag') ) {
+        if ( url_param('tag') =~ / / ) {
+            my @tags   = split( / /, url_param('tag') );
+            my $rcount = 1;
+
+            foreach (@tags) {
+                push( @parms, $_ );
+                $joins = "$joins inner join $tbl_bookmark_tags 
 					as bt$rcount on
                                           ($tbl_bookmarks.id = bt$rcount.bookmark_id)
                                         inner join $tbl_tags as t$rcount on
                                            (t$rcount.id = bt$rcount.tag_id and t$rcount.name = ?) ";
-                                $rcount++;
-                        }
-		} else {
+                $rcount++;
+            }
+        }
+        else {
 
-			push(@parms, url_param('tag'));
-			$joins = "
+            push( @parms, url_param('tag') );
+            $joins = "
 				inner join $tbl_bookmark_tags on 
 					($tbl_bookmarks.id = 
 						$tbl_bookmark_tags.bookmark_id)
 				inner join $tbl_tags on
 					($tbl_bookmark_tags.tag_id = $tbl_tags.id)";
-			$ew = "and ($tbl_tags.name = ?)";
-		}
-	}
+            $ew = "and ($tbl_tags.name = ?)";
+        }
+    }
 
-	my $access_where = "where (access_level = 1)";
-	if(logged_in() eq 1) {
-		$access_where = "";
-	}
+    my $access_where = "where (access_level = 1)";
+    if ( logged_in() eq 1 ) {
+        $access_where = "";
+    }
 
-	my $sql = "
+    my $sql = "
 		select $tbl_bookmarks.id, $tbl_bookmarks.title, $tbl_bookmarks.url
 			from $tbl_bookmarks $joins $access_where $ew
 		order by $tbl_bookmarks.date desc limit 30";
 
-	my $sth = $dbh->prepare($sql);
-	$sth->execute(@parms);
+    my $sth = $dbh->prepare($sql);
+    $sth->execute(@parms);
 
-	print <<RDFHEADER;
+    print <<RDFHEADER;
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
     xmlns:dc="http://purl.org/dc/elements/1.1/"
@@ -101,10 +102,10 @@ sub send_rss {
   <dc:rights>Copyright 2006</dc:rights>
 RDFHEADER
 
-	while(my @hr = $sth->fetchrow_array) {
-	  my $url = sanitize_html($hr[2]);
-	  my $title = sanitize_html($hr[1]);
-	  print <<ITEM;
+    while ( my @hr = $sth->fetchrow_array ) {
+        my $url   = sanitize_html( $hr[2] );
+        my $title = sanitize_html( $hr[1] );
+        print <<ITEM;
 <item>
   <title>$title</title>
   <link>$url</link>
@@ -112,9 +113,9 @@ RDFHEADER
   <content:encoded><![CDATA[<a href="$url">$hr[1]</a>]]></content:encoded>
 </item>
 ITEM
-	}
+    }
 
-	print "</channel></rss>\n\n";
+    print "</channel></rss>\n\n";
 }
 
 1;

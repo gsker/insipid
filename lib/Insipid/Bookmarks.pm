@@ -30,7 +30,7 @@ use Insipid::Schemas;
 use Insipid::Sessions;
 use Insipid::Tags;
 use Insipid::Util;
-use DBI qw/:sql_types/;;
+use DBI qw/:sql_types/;
 use Date::Format;
 use Date::Parse;
 use CGI qw/:standard/;
@@ -42,66 +42,66 @@ require Exporter;
 @ISA = qw(Exporter);
 
 @EXPORT = qw(
-add_bookmark
-export_bookmarks
-get_bookmark_id_by_url
-$icount
-$duplicates
+  add_bookmark
+  export_bookmarks
+  get_bookmark_id_by_url
+  $icount
+  $duplicates
 );
 
 sub get_bookmark_id_by_url {
-	my ($url) = (@_);
-	my $sql = "select $tbl_bookmarks.id from $tbl_bookmarks 
+    my ($url) = (@_);
+    my $sql = "select $tbl_bookmarks.id from $tbl_bookmarks 
 			where ($tbl_bookmarks.url = ?)";
-	my $sth = $dbh->prepare($sql);
-	$sth->execute($url);
+    my $sth = $dbh->prepare($sql);
+    $sth->execute($url);
 
-	my @r = $sth->fetchrow_array;
-	return $r[0];
+    my @r = $sth->fetchrow_array;
+    return $r[0];
 }
 
 sub add_bookmark {
-	my ($url, $title, $description, $access_level, $epoch, $tags) = (@_);
-	my ($sql, $sth);
+    my ( $url, $title, $description, $access_level, $epoch, $tags ) = (@_);
+    my ( $sql, $sth );
 
-	if(logged_in() ne 1) {
-		push(@errors, 'You have to be logged in to perform ' .
-			'that operation.');
-		return;
-	}
+    if ( logged_in() ne 1 ) {
+        push( @errors,
+            'You have to be logged in to perform ' . 'that operation.' );
+        return;
+    }
 
-	my $md5 = md5_hex($url);
+    my $md5 = md5_hex($url);
 
-	# Check for duplicate
-	$sql = "select count(*) from $tbl_bookmarks where (md5 like ?)";
-	$sth = $dbh->prepare($sql);
-	$sth->execute($md5);
-	my ($count) = $sth->fetchrow_array;
-	if($count ne 0 ) {
-		$duplicates++;
-		return;
-	}
+    # Check for duplicate
+    $sql = "select count(*) from $tbl_bookmarks where (md5 like ?)";
+    $sth = $dbh->prepare($sql);
+    $sth->execute($md5);
+    my ($count) = $sth->fetchrow_array;
+    if ( $count ne 0 ) {
+        $duplicates++;
+        return;
+    }
 
-	$sql = "INSERT INTO $tbl_bookmarks 
+    $sql = "INSERT INTO $tbl_bookmarks 
 		(url, md5, title, description, access_level, date) 
 		VALUES (?, ?, ?, ?, ? , ? )";
 
-	if($epoch eq 0) { $epoch = time; }
-	$sth = $dbh->prepare($sql);
+    if ( $epoch eq 0 ) { $epoch = time; }
+    $sth = $dbh->prepare($sql);
 
-	$sth->execute($url, $md5, $title, $description, $access_level, $epoch);
-	$icount++;
-	set_tags(get_bookmark_id_by_url($url), $tags);
+    $sth->execute( $url, $md5, $title, $description, $access_level, $epoch );
+    $icount++;
+    set_tags( get_bookmark_id_by_url($url), $tags );
 }
 
 sub export_bookmarks {
-	my ($writer) = (@_);
+    my ($writer) = (@_);
 
-	my ($sql, $sth, $last_id);
+    my ( $sql, $sth, $last_id );
 
-	$writer->startTag("posts");
+    $writer->startTag("posts");
 
-	$sql = "select 
+    $sql = "select 
 		  $tbl_bookmarks.id, $tbl_bookmarks.title, 
 		  $tbl_bookmarks.date, $tbl_bookmarks.access_level, 
 		  $tbl_bookmarks.url, $tbl_tags.name
@@ -111,100 +111,110 @@ sub export_bookmarks {
 		left join $tbl_tags on
 		  ($tbl_bookmark_tags.tag_id = $tbl_tags.id)";
 
-  	$sth = $dbh->prepare($sql);
-	$sth->execute();
+    $sth = $dbh->prepare($sql);
+    $sth->execute();
 
-	my ($url, $title);
-	my $tags = "";
+    my ( $url, $title );
+    my $tags = "";
 
-	my %last;
-	$last_id = -1;
-	my $current = 0;
-	my $max = $sth->rows;
+    my %last;
+    $last_id = -1;
+    my $current = 0;
+    my $max     = $sth->rows;
 
-	# There HAS to be a better way to do this horrible looping for tags.
-	while(my $hr = $sth->fetchrow_hashref) {
-		$current++;
+    # There HAS to be a better way to do this horrible looping for tags.
+    while ( my $hr = $sth->fetchrow_hashref ) {
+        $current++;
 
-		# For the first bookmark
-		if($last_id eq -1) {
-		  $last_id = $hr->{'id'};
-		  $last{title} = $hr->{'title'};
-		  $last{url} = $hr->{'url'};
-		  $last{tags} = "";
-		  $last{timestamp} = $hr->{'date'};
-		  $last{access_level} = $hr->{'access_level'};
-		} 
-		
-		#if(($hr->{'id'} ne $last_id) || ($current eq $max)) {
-		if($hr->{'id'} ne $last_id) {
-		  # the id changed, so show the last mark.
-		  #my $url = sanitize_html($last{'url'});
-		  my $url = $last{'url'};
-		  my $title = $last{'title'};
-		  #my $title = sanitize_html($last{'title'});
-		  #$title =~ s/"/&quot;/gi;
-		  if(defined($last{tags})) {
-		  	if($last{tags} eq "") {
-		  		$last{tags} = "system:unfiled"; 
-		  	}
-		  } else {
-		  	$last{tags} = "system:unfiled";
-		  }
-		  
-		  if($last{url} ne "") {
-		 	my $tstr = time2str("%Y-%m-%dT%TZ", $last{timestamp}, "GMT");
-			$writer->emptyTag('post',
-				'access_level' => $last{access_level},
-				'href' => $url,
-				'description' => $title,
-				'tag' => $last{tags},
-				'time' => $tstr);
-		  }
+        # For the first bookmark
+        if ( $last_id eq -1 ) {
+            $last_id            = $hr->{'id'};
+            $last{title}        = $hr->{'title'};
+            $last{url}          = $hr->{'url'};
+            $last{tags}         = "";
+            $last{timestamp}    = $hr->{'date'};
+            $last{access_level} = $hr->{'access_level'};
+        }
 
-		  # Swap the new one in.
-		  $last_id = $hr->{'id'};
-		  $last{title} = $hr->{'title'};
-		  $last{url} = $hr->{'url'};
-		  $last{tags} = $hr->{'name'};
-		  $last{timestamp} = $hr->{'date'};
-		  $last{access_level} = $hr->{'access_level'};
-		} else {
-		  # Add tag to the current bookmark
-		  if($hr->{'name'}) {
-			  $last{tags} = "$last{tags} $hr->{'name'}";
-		  }
-		}
-	}
-	
-	if($last{'url'}) {
-		#$url = sanitize_html($last{'url'});
-		#$title = sanitize_html($last{'title'});
-		#$title =~ s/"/&quot;/gi;
-		
-		$url = $last{'url'};
-		$title = $last{'title'};
-		
-		if(defined($last{tags})) {
-			if($last{tags} eq "") {
-				$last{tags} = "system:unfiled"; 
-			}
-		} else {
-			$last{tags} = "system:unfiled";
-		}
-		  
-		if($last{url} ne "") {
-			my $tstr = time2str("%Y-%m-%dT%TZ", $last{timestamp}, "GMT");
-			$writer->emptyTag('post',
-				'access_level' => $last{access_level},
-				'href' => $url,
-				'description' => $title,
-				'tag' => $last{tags},
-				'time' => $tstr);
-		}
-	}
+        #if(($hr->{'id'} ne $last_id) || ($current eq $max)) {
+        if ( $hr->{'id'} ne $last_id ) {
 
-	$writer->endTag("posts");
+            # the id changed, so show the last mark.
+            #my $url = sanitize_html($last{'url'});
+            my $url   = $last{'url'};
+            my $title = $last{'title'};
+
+            #my $title = sanitize_html($last{'title'});
+            #$title =~ s/"/&quot;/gi;
+            if ( defined( $last{tags} ) ) {
+                if ( $last{tags} eq "" ) {
+                    $last{tags} = "system:unfiled";
+                }
+            }
+            else {
+                $last{tags} = "system:unfiled";
+            }
+
+            if ( $last{url} ne "" ) {
+                my $tstr = time2str( "%Y-%m-%dT%TZ", $last{timestamp}, "GMT" );
+                $writer->emptyTag(
+                    'post',
+                    'access_level' => $last{access_level},
+                    'href'         => $url,
+                    'description'  => $title,
+                    'tag'          => $last{tags},
+                    'time'         => $tstr
+                );
+            }
+
+            # Swap the new one in.
+            $last_id            = $hr->{'id'};
+            $last{title}        = $hr->{'title'};
+            $last{url}          = $hr->{'url'};
+            $last{tags}         = $hr->{'name'};
+            $last{timestamp}    = $hr->{'date'};
+            $last{access_level} = $hr->{'access_level'};
+        }
+        else {
+            # Add tag to the current bookmark
+            if ( $hr->{'name'} ) {
+                $last{tags} = "$last{tags} $hr->{'name'}";
+            }
+        }
+    }
+
+    if ( $last{'url'} ) {
+
+        #$url = sanitize_html($last{'url'});
+        #$title = sanitize_html($last{'title'});
+        #$title =~ s/"/&quot;/gi;
+
+        $url   = $last{'url'};
+        $title = $last{'title'};
+
+        if ( defined( $last{tags} ) ) {
+            if ( $last{tags} eq "" ) {
+                $last{tags} = "system:unfiled";
+            }
+        }
+        else {
+            $last{tags} = "system:unfiled";
+        }
+
+        if ( $last{url} ne "" ) {
+            my $tstr = time2str( "%Y-%m-%dT%TZ", $last{timestamp}, "GMT" );
+            $writer->emptyTag(
+                'post',
+                'access_level' => $last{access_level},
+                'href'         => $url,
+                'description'  => $title,
+                'tag'          => $last{tags},
+                'time'         => $tstr
+            );
+        }
+    }
+
+    $writer->endTag("posts");
 }
 
 1;
