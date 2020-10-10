@@ -247,5 +247,111 @@ INSERT IGNORE INTO $tbl_options VALUES(
 );
 CMYSQL
 
+our $creatSQLite = <<CSQLITE;
+CREATE TABLE `authentication` (
+    `session_id` char(32) NOT NULL, 
+    `create_time` integer, 
+    PRIMARY KEY (`session_id`)
+);
+
+CREATE TABLE `bookmark_tags` (
+    `bookmark_id` integer NOT NULL, 
+    `tag_id` integer NOT NULL, 
+    PRIMARY KEY (`bookmark_id`, `tag_id`)
+);
+
+CREATE TABLE `bookmarks` (
+    `id` integer PRIMARY KEY AUTOINCREMENT, 
+    `url` text NOT NULL, 
+    `md5` char(32) NOT NULL, 
+    `date` integer DEFAULT (0) NOT NULL, 
+    `title` varchar(255) NOT NULL, 
+    `description` text NOT NULL, 
+    `access_level` integer DEFAULT (0) NOT NULL
+);
+
+CREATE TABLE sqlite_sequence(
+    name,
+    seq
+);
+
+CREATE TABLE `options` (
+    `name` varchar(255) NOT NULL, 
+    `description` text NOT NULL, 
+    `value` text NOT NULL, 
+    PRIMARY KEY (`name`)
+);
+
+CREATE TABLE `pagecache` (
+    `md5` char(32) NOT NULL, 
+    `url` text NOT NULL, 
+    `content_type` varchar(50), 
+    `content_length` integer DEFAULT (0) NOT NULL, 
+    `content` blob, 
+    `date` integer DEFAULT (0) NOT NULL, 
+    PRIMARY KEY (`md5`)
+);
+
+CREATE TABLE `pagecache_references` (
+    `md5_parent` char(32) NOT NULL, 
+    `md5_child` char(32) NOT NULL, 
+    PRIMARY KEY (`md5_parent`, `md5_child`)
+);
+
+CREATE TABLE `tags` (
+    `id` integer PRIMARY KEY AUTOINCREMENT, 
+    `name` varchar(255) NOT NULL
+);
+
+CREATE UNIQUE INDEX `authentication_session_id` ON `authentication` (`session_id`);
+CREATE INDEX `bookmark_tags_bookmark_id` ON `bookmark_tags` (`bookmark_id`);
+CREATE INDEX `bookmark_tags_tag_id` ON `bookmark_tags` (`tag_id`);
+CREATE UNIQUE INDEX `bookmarks_md5` ON `bookmarks` (`md5`);
+CREATE UNIQUE INDEX `options_name` ON `options` (`name`);
+CREATE UNIQUE INDEX `tags_name` ON `tags` (`name`);
+
+INSERT INTO $tbl_options VALUES(
+  'feed_name',
+  'The title of your feed (e.g. My Bookmarks)',
+  'Bookmarks'
+);
+
+INSERT INTO $tbl_options VALUES(
+  'site_name',
+  'The title of the main page (e.g. My Bookmarks)',
+  'My Bookmarks'
+);
+
+INSERT INTO $tbl_options VALUES(
+  'public_searches',
+  'Allow public searches - when set to yes, any visitor can search your bookmarks.',
+  'no'
+);
+
+INSERT INTO $tbl_options VALUES(
+  'proxy_host',
+  'The proxy server (if any) to use when making page snapshots.',
+  ''
+);
+
+INSERT INTO $tbl_options VALUES(
+  'proxy_port',
+  'Your proxy port number.',
+  '3128'
+);
+
+INSERT INTO $tbl_options VALUES(
+  'version',
+  'Internal Insipid version number',
+  '$version'
+);
+
+INSERT INTO $tbl_options VALUES(
+  'use_rewrite',
+  'Use mod_rewrite - disable this if you do not want .htaccess-controlled URLs, or if your Apache does not have the rewrite module installed.',
+  'no'
+);
+CSQLITE
+
 1;
 __END__
